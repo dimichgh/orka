@@ -122,6 +122,16 @@ orka.start(executionPlan, {
     console.log(results.B.err);
     console.log(results.B.output);
 });
+// example of task A that depends on B
+function taskA(input, callback) {
+    input.dataFromB(function (err, data) {
+        // do some data process for task B results
+        // complete task A
+        callback(err, {
+            // some results from task A and B
+        });
+    });
+}
 ```
 
 You can also cancel tasks in case they take too much time. The tasks that has already been completed will contain results.
