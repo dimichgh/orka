@@ -134,7 +134,7 @@ function taskA(input, callback) {
 }
 ```
 
-You can also cancel tasks in case they take too much time. The tasks that has already been completed will contain results.
+You can also cancel tasks in case they take too much time. The tasks that have already been completed will contain results.
 ```javascript
 var orka = require('orka');
 var executionPlan = {
@@ -182,6 +182,17 @@ control.stop({
         },
         B: {
             result: (default result for B)
+        }
+    }
+});
+```
+
+From the above API you can see that you can cancel specific tasks while the rest will still run.
+```javascript
+control.stop({
+    tasks: {
+        A: {
+            err: new Error('Only task A has been stopped')
         }
     }
 });
