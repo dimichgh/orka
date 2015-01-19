@@ -1,0 +1,20 @@
+{
+    "mobile": {
+        "item": {
+            "item-details": "get-item-details-svc",
+            "user-info": "get-user-info-svc"
+        },
+        "service3": {
+            "item": "item" //
+        },
+        "product": {
+            "product-info": "get-product-info-svc"
+        },
+        "render": {
+            "header": "get-header-svc",
+            "footer": "get-footer-svc",
+            "item-data": "item",
+            "product-data": "product"
+        }
+    }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "orka",
+  "version": "0.1.0",
+  "description": "Configuration based task orchestrator",
+  "main": "index.js",
+  "scripts": {
+    "test": "make all"
+  },
+  "keywords": [
+    "async",
+    "task",
+    "orchestrator"
+  ],
+  "author": "Dmytro Semenov <dimichsdg@yahoo.com>",
+  "license": "Apache License v2.0",
+  "dependencies": {
+    "raptor-async": "~1.0.3",
+    "async": "~0.9.0"
+  },
+  "devDependencies": {
+    "jshint": "^2",
+    "mocha": "^1",
+    "should": "~4.6.0"
+  }
+}

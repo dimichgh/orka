@@ -1,0 +1,35 @@
+.cache
+.beans
+*.marko.js
+*.dust.js
+
+lib-cov
+*.seed
+*.log
+*.csv
+*.dat
+*.out
+*.pid
+*.gz
+
+pids
+logs
+results
+
+node_modules
+npm-debug.log
+xunit.xml
+
+# Project Specifics #
+#####################
+.project
+.idea
+.settings
+
+
+# OS generated files #
+######################
+.DS_Store*
+ehthumbs.db
+Icon?
+Thumbs.db
