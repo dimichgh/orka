@@ -13,7 +13,7 @@ npm install orka --save
 
 # Configuration
 
-The configuration is based on one level of dependency tree, meaning each task specifies only direct dependencies. For example:
+The configuration is called 'execution plan' and is based on one level of dependency tree, meaning each task specifies only direct dependencies. 
 
 ## Execution plan
 
@@ -48,7 +48,7 @@ orka.start(executionPlan, {
 });
 ```
 
-## Task signature
+## Task API
 
 The task is expected to have the following execution API:
 ```javascript
