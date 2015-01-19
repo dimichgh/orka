@@ -15,6 +15,8 @@ npm install orka --save
 
 The configuration is based on one level of dependency tree, meaning each task specifies only direct dependencies. For example:
 
+## Execution plan
+
 ```javascript
 var plan = {
     A: {
@@ -31,13 +33,53 @@ var plan = {
 };
 ```
 
+## Task loading
+
+The tasks are loaded via options.loader:
+```javascript
+var orka = require('orka');
+orka.start(executionPlan, {
+    load: function (taskName) {
+        return someRegistry[taskName];
+    }
+}, function (err, results) {
+    console.log(results.A.err);
+    console.log(results.A.output);
+});
+```
+
+## Task signature
+
+The task is expected to have the following execution API:
+```javascript
+function task(input, callback) {
+    // context shared between tasks
+    var ctx = input.ctx;
+    // getting data from dependency task
+    var getData = input.dataFromTaskX;
+    // waiting for data
+    getData(function (err, data) {
+        // process data
+        // do task own processing
+        // complete the task
+        callback(err, results);
+    });
+}
+```
+
+## Examples
+
 Single task execution
 ```javascript
 var orka = require('orka');
 var executionPlan = {
     A: {}
 };
-orka.start(executionPlan, function (err, results) {
+orka.start(executionPlan, {
+    load: function (taskName) {
+        return someRegistry[taskName];
+    }
+}, function (err, results) {
     console.log(results.A.err);
     console.log(results.A.output);
 });
