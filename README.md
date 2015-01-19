@@ -92,7 +92,11 @@ var executionPlan = {
     A: {},
     B: {}
 };
-orka.start(executionPlan, function (err, results) {
+orka.start(executionPlan, {
+    load: function (taskName) {
+        return someRegistry[taskName];
+    }
+}, function (err, results) {
     console.log(results.A.err);
     console.log(results.A.output);
     console.log(results.B.err);
@@ -108,7 +112,11 @@ var executionPlan = {
         dataFromB: 'B'
     }
 };
-orka.start(executionPlan, function (err, results) {
+orka.start(executionPlan, {
+    load: function (taskName) {
+        return someRegistry[taskName];
+    }
+}, function (err, results) {
     console.log(results.A.err);
     console.log(results.A.output);
     console.log(results.B.err);
@@ -124,7 +132,11 @@ var executionPlan = {
         dataFromB: 'B'
     }
 };
-var control = orka.start(executionPlan, function (err, results) {
+var control = orka.start(executionPlan, {
+    load: function (taskName) {
+        return someRegistry[taskName];
+    }
+}, function (err, results) {
     console.log(results.A.err);
     console.log(results.A.output);
     console.log(results.B.err);
@@ -142,7 +154,11 @@ var executionPlan = {
         dataFromB: 'B'
     }
 };
-var control = orka.start(executionPlan, function (err, results) {
+var control = orka.start(executionPlan, {
+    load: function (taskName) {
+        return someRegistry[taskName];
+    }
+}, function (err, results) {
     console.log(results.A.err);
     console.log(results.A.output);
     console.log(results.B.err);
