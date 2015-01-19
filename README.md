@@ -35,7 +35,7 @@ var plan = {
 
 ## Task loading
 
-The tasks are loaded via options.loader:
+The tasks can be loaded via options.load function or require by default:
 ```javascript
 var orka = require('orka');
 orka.start(executionPlan, {
