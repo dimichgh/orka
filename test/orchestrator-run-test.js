@@ -305,7 +305,7 @@ describe(__filename, function () {
         });
     });
 
-    it('should run two tasks cancel the last task', function (done) {
+    it('should run two tasks cancel the last task, array dependencies', function (done) {
         var execFunc = createTask('A');
         var tasks = {
             A: createTask('A', 500),
@@ -335,6 +335,36 @@ describe(__filename, function () {
         });
     });
 
+    it('should run two tasks cancel the last task, map dependencies', function (done) {
+        var execFunc = createTask('A');
+        var tasks = {
+            A: createTask('A', 500),
+            B: createTask('B')
+        };
+        var orc = new Orchestrator({
+            A: {},
+            B: {}
+        }, {
+            load: function load(name) {
+                return tasks[name];
+            }
+        });
+
+        var control = orc.start({
+            foo: 'bar'
+        }, function (err, result) {
+            assert.ok(!err);
+            assert.ok(result.A.err);
+            assert.equal('test error', result.A.err.message);
+            assert.ok(!result.B.err);
+            done();
+        });
+
+        orc.loadTask('B').output.done(function (err, result) {
+            control.stop(new Error('test error'));
+        });
+    });
+
     it('should run two tasks B->A and cancel the last task', function (done) {
         var execFunc = createTask('A');
         var tasks = {
@@ -343,6 +373,37 @@ describe(__filename, function () {
         };
         var orc = new Orchestrator({
             A: ['B']
+        }, {
+            load: function load(name) {
+                return tasks[name];
+            }
+        });
+
+        var control = orc.start({
+            foo: 'bar'
+        }, function (err, result) {
+            assert.ok(!err);
+            assert.ok(result.A.err);
+            assert.equal('test error', result.A.err.message);
+            assert.ok(!result.B.err);
+            done();
+        });
+
+        orc.loadTask('B').output.done(function (err, result) {
+            control.stop(new Error('test error'));
+        });
+    });
+
+    it('should run two tasks B->A and cancel the last task, map dependencies', function (done) {
+        var execFunc = createTask('A');
+        var tasks = {
+            A: createTask('A', 500),
+            B: createTask('B')
+        };
+        var orc = new Orchestrator({
+            A: {
+                data: 'B'
+            }
         }, {
             load: function load(name) {
                 return tasks[name];

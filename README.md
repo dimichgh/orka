@@ -28,6 +28,18 @@ var plan = {
 };
 ```
 
+You can also map task output to another task input
+```javascript
+var plan = {
+    A: {
+        data-B: 'B',
+        data-C: 'C'
+    },
+    B: ['C'],
+    D: ['A', 'B']
+};
+```
+
 ## Task loading
 
 The tasks can be loaded via options.load function or require by default:
@@ -100,7 +112,9 @@ Two dependent tasks
 ```javascript
 var orka = require('orka');
 var executionPlan = {
-    A: ['B']
+    A: {
+        data: 'B'
+    }
 };
 orka.start(executionPlan, {
     load: function (taskName) {
@@ -114,7 +128,7 @@ orka.start(executionPlan, {
 });
 // example of task A that depends on B
 function taskA(input, callback) {
-    input.dependencies.B(function (err, data) {
+    input.dependencies.data(function (err, data) {
         // do some data process for task B results
         // complete task A
         callback(err, {
