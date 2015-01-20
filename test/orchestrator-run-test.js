@@ -27,7 +27,7 @@ describe(__filename, function () {
     });
 
     it('should run a single task', function (done) {
-        var execFunc = createTask('A');
+        var execFunc = createNonMappedTask('A');
         var orc = new Orchestrator({
             A: []
         }, {
@@ -48,8 +48,8 @@ describe(__filename, function () {
 
     it('should run two parallel tasks', function (done) {
         var tasks = {
-            A: createTask('A'),
-            B: createTask('B')
+            A: createNonMappedTask('A'),
+            B: createNonMappedTask('B')
         };
         var orc = new Orchestrator([
             'A',
@@ -78,8 +78,8 @@ describe(__filename, function () {
 
     it('should run two tasks, one depends on the other', function (done) {
         var tasks = {
-            A: createTask('A'),
-            B: createTask('B')
+            A: createNonMappedTask('A'),
+            B: createNonMappedTask('B')
         };
         var orc = new Orchestrator({
             A: ['B']
@@ -110,10 +110,10 @@ describe(__filename, function () {
 
     it('should run many tasks, some depend on the others', function (done) {
         var tasks = {
-            A: createTask('A'),
-            B: createTask('B'),
-            C: createTask('C'),
-            D: createTask('D')
+            A: createNonMappedTask('A'),
+            B: createNonMappedTask('B'),
+            C: createNonMappedTask('C'),
+            D: createNonMappedTask('D')
         };
 
         var ctx = {
@@ -139,8 +139,45 @@ describe(__filename, function () {
 
     });
 
+    it('should run many tasks, some depend on the others, mapped tasks', function (done) {
+        var tasks = {
+            A: createMappedTask('A'),
+            B: createNonMappedTask('B'),
+            C: createNonMappedTask('C'),
+            D: createMappedTask('D')
+        };
+
+        var ctx = {
+            foo: 'bar'
+        };
+
+        index.start({
+            A: {
+                dataFromB: 'B',
+                dataFromC: 'C'
+            },
+            B: ['C'],
+            D: {
+                dataFromA: 'A',
+                dataFromB: 'B'
+            }
+        }, {
+            load: function load(name) {
+                return tasks[name];
+            },
+            ctx: ctx
+        }, function (err, result) {
+            assert.ok(!err);
+            assert.equal(4, Object.keys(result).length);
+            assert.equal('C->B->A->D', ctx.chain.join('->'));
+
+            done();
+        });
+
+    });
+
     it('should cancel a single task', function (done) {
-        var execFunc = createTask('A');
+        var execFunc = createNonMappedTask('A');
         var orc = new Orchestrator(['A'], {
             load: function load(name) {
                 return execFunc;
@@ -160,7 +197,7 @@ describe(__filename, function () {
     });
 
     it('should cancel a single task gracefully with default result for all tasks', function (done) {
-        var execFunc = createTask('A');
+        var execFunc = createNonMappedTask('A');
         var orc = new Orchestrator({
             A: []
         }, {
@@ -183,7 +220,7 @@ describe(__filename, function () {
     });
 
     it('should cancel a single task gracefully with specific result', function (done) {
-        var execFunc = createTask('A');
+        var execFunc = createNonMappedTask('A');
         var orc = new Orchestrator({
             A: []
         }, {
@@ -211,8 +248,8 @@ describe(__filename, function () {
 
     it('should cancel two tasks gracefully with default results', function (done) {
         var tasks = {
-            A: createTask('A'),
-            B: createTask('B')
+            A: createNonMappedTask('A'),
+            B: createNonMappedTask('B')
         };
         var orc = new Orchestrator({
             A: ['B']
@@ -245,8 +282,8 @@ describe(__filename, function () {
 
     it('should cancel two tasks, one gracefully and the other with default result', function (done) {
         var tasks = {
-            A: createTask('A'),
-            B: createTask('B')
+            A: createNonMappedTask('A'),
+            B: createNonMappedTask('B')
         };
         var orc = new Orchestrator({
             A: ['B']
@@ -278,7 +315,7 @@ describe(__filename, function () {
     });
 
     it('should cancel a single task gracefully, but with error', function (done) {
-        var execFunc = createTask('A');
+        var execFunc = createNonMappedTask('A');
         var orc = new Orchestrator({
             A: []
         }, {
@@ -306,10 +343,9 @@ describe(__filename, function () {
     });
 
     it('should run two tasks cancel the last task, array dependencies', function (done) {
-        var execFunc = createTask('A');
         var tasks = {
-            A: createTask('A', 500),
-            B: createTask('B')
+            A: createNonMappedTask('A', 500),
+            B: createNonMappedTask('B')
         };
         var orc = new Orchestrator({
             A: [],
@@ -336,10 +372,9 @@ describe(__filename, function () {
     });
 
     it('should run two tasks cancel the last task, map dependencies', function (done) {
-        var execFunc = createTask('A');
         var tasks = {
-            A: createTask('A', 500),
-            B: createTask('B')
+            A: createMappedTask('A', 500),
+            B: createMappedTask('B')
         };
         var orc = new Orchestrator({
             A: {},
@@ -366,10 +401,9 @@ describe(__filename, function () {
     });
 
     it('should run two tasks B->A and cancel the last task', function (done) {
-        var execFunc = createTask('A');
         var tasks = {
-            A: createTask('A', 500),
-            B: createTask('B')
+            A: createNonMappedTask('A', 500),
+            B: createNonMappedTask('B')
         };
         var orc = new Orchestrator({
             A: ['B']
@@ -395,10 +429,9 @@ describe(__filename, function () {
     });
 
     it('should run two tasks B->A and cancel the last task, map dependencies', function (done) {
-        var execFunc = createTask('A');
         var tasks = {
-            A: createTask('A', 500),
-            B: createTask('B')
+            A: createMappedTask('A', 500),
+            B: createNonMappedTask('B')
         };
         var orc = new Orchestrator({
             A: {
@@ -427,10 +460,11 @@ describe(__filename, function () {
 
 });
 
-function createTask(name, delay) {
+function _createTask(mapped, name, delay) {
     function exec(input, callback) {
         input.ctx.chain = input.ctx.chain || [];
-        var inputData = Object.keys(input.dependencies || {}).map(function (paramName) {
+
+        var inputData = mapped && Object.keys(input.dependencies || {}).map(function (paramName) {
             return input.dependencies[paramName];
         });
 
@@ -445,3 +479,6 @@ function createTask(name, delay) {
     exec.id = name;
     return exec;    
 }
+
+var createMappedTask = _createTask.bind(null, true);
+var createNonMappedTask = _createTask.bind(null, false);

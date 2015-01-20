@@ -114,6 +114,28 @@ describe(__filename, function () {
         assert.equal('B', tasks[1].execFunc.id);
     });
 
+    it('should load 2 tasks with mapped dependencies', function () {
+        var execFuncs = {
+            A: createTask('A'),
+            B: createTask('B')
+        };
+
+        var orc = new Orchestrator({
+            A: {},
+            B: {}
+        }, {
+            load: function load(name) {
+                return execFuncs[name];
+            }
+        });
+
+        var tasks = orc.loadTasks(['A', 'B']);
+
+        assert.equal(2, tasks.length);
+        assert.equal('A', tasks[0].execFunc.id);
+        assert.equal('B', tasks[1].execFunc.id);
+    });
+
     it('should load 3 tasks', function () {
         var execFuncs = {
             A: createTask('A'),
@@ -125,6 +147,33 @@ describe(__filename, function () {
             A: [
                 'B'
             ],
+            B: [
+                'C'
+            ]
+        }, {
+            load: function load(name) {
+                return execFuncs[name];
+            }
+        });
+
+        var tasks = orc.loadTasks(['A']);
+
+        assert.equal(2, tasks.length);
+        assert.equal('A', tasks[0].execFunc.id);
+        assert.equal('B', tasks[1].execFunc.id);
+    });
+
+    it('should load 3 tasks, mapped dependencies', function () {
+        var execFuncs = {
+            A: createTask('A'),
+            B: createTask('B'),
+            C: createTask('C')
+        };
+
+        var orc = new Orchestrator({
+            A: {
+                dataFromB: 'B'
+            },
             B: [
                 'C'
             ]
