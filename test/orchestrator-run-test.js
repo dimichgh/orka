@@ -51,10 +51,10 @@ describe(__filename, function () {
             A: createTask('A'),
             B: createTask('B')
         };
-        var orc = new Orchestrator({
-            A: [],
-            B: []
-        }, {
+        var orc = new Orchestrator([
+            'A',
+            'B'
+        ], {
             load: function load(name) {
                 return tasks[name];
             }
@@ -141,9 +141,7 @@ describe(__filename, function () {
 
     it('should cancel a single task', function (done) {
         var execFunc = createTask('A');
-        var orc = new Orchestrator({
-            A: []
-        }, {
+        var orc = new Orchestrator(['A'], {
             load: function load(name) {
                 return execFunc;
             }

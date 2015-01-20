@@ -83,10 +83,7 @@ orka.start(executionPlan, {
 Two independent tasks
 ```javascript
 var orka = require('orka');
-var executionPlan = {
-    A: [],
-    B: []
-};
+var executionPlan = ['A', 'B'];
 orka.start(executionPlan, {
     load: function (taskName) {
         return someRegistry[taskName];

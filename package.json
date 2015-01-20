@@ -1,6 +1,6 @@
 {
   "name": "orka",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Configuration based task orchestrator",
   "main": "./lib/index.js",
   "scripts": {
