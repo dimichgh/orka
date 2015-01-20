@@ -5,6 +5,9 @@ The module provides configuration based task management.
 
 The module functionality is different from other modules that provide similar API, such as async or orchestrator. The main difference is how a task is executed in relation to the tasks it depends on. For example, if task A depends on tasks C and D, it will be executed only when tasks C and D are complete while orka will let A run till it really needs results from C or D. If it happens due to logic that task A does not need data from D or C it will run without waiting for the related tasks.
 
+# TODO:
+* Make task loading async
+
 # Installation
 
 ```
@@ -19,17 +22,9 @@ The configuration is called 'execution plan' and is based on one level of depend
 
 ```javascript
 var plan = {
-    A: {
-        dataFromB: 'B',
-        dataFromC: 'C'
-    },
-    B: {
-        dataFromC: 'C'
-    },
-    D: {
-        dataFromA: 'A',
-        dataFromB: 'B'
-    }
+    A: ['B', 'C'],
+    B: ['C'],
+    D: ['A', 'B']
 };
 ```
 
@@ -55,8 +50,8 @@ The task is expected to have the following execution API:
 function task(input, callback) {
     // context shared between tasks
     var ctx = input.ctx;
-    // getting data from dependency task
-    var getData = input.dataFromTaskX;
+    // getting data from dependency task 'X'
+    var getData = input.dependencies.X;
     // waiting for data
     getData(function (err, data) {
         // process data
@@ -73,7 +68,7 @@ Single task execution
 ```javascript
 var orka = require('orka');
 var executionPlan = {
-    A: {}
+    A: []
 };
 orka.start(executionPlan, {
     load: function (taskName) {
@@ -89,8 +84,8 @@ Two independent tasks
 ```javascript
 var orka = require('orka');
 var executionPlan = {
-    A: {},
-    B: {}
+    A: [],
+    B: []
 };
 orka.start(executionPlan, {
     load: function (taskName) {
@@ -108,9 +103,7 @@ Two dependent tasks
 ```javascript
 var orka = require('orka');
 var executionPlan = {
-    A: {
-        dataFromB: 'B'
-    }
+    A: ['B']
 };
 orka.start(executionPlan, {
     load: function (taskName) {
@@ -124,7 +117,7 @@ orka.start(executionPlan, {
 });
 // example of task A that depends on B
 function taskA(input, callback) {
-    input.dataFromB(function (err, data) {
+    input.dependencies.B(function (err, data) {
         // do some data process for task B results
         // complete task A
         callback(err, {
@@ -138,9 +131,7 @@ You can also cancel tasks in case they take too much time. The tasks that have a
 ```javascript
 var orka = require('orka');
 var executionPlan = {
-    A: {
-        dataFromB: 'B'
-    }
+    A: ['B']
 };
 var control = orka.start(executionPlan, {
     load: function (taskName) {
@@ -160,9 +151,7 @@ You can cancel tasks gracefully, with default result.
 ```javascript
 var orka = require('orka');
 var executionPlan = {
-    A: {
-        dataFromB: 'B'
-    }
+    A: ['B']
 };
 var control = orka.start(executionPlan, {
     load: function (taskName) {

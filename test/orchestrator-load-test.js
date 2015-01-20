@@ -26,7 +26,7 @@ describe(__filename, function () {
     it('should load task', function (done) {
         var execFunc = createTask('A');
         var orc = new Orchestrator({
-            A: {}
+            A: []
         }, {
             load: function load(name) {
                 return execFunc;
@@ -57,7 +57,7 @@ describe(__filename, function () {
     it('should load single task', function () {
         var execFunc = createTask('A');
         var orc = new Orchestrator({
-            A: {}
+            A: []
         }, {
             load: function load(name) {
                 return execFunc;
@@ -76,9 +76,9 @@ describe(__filename, function () {
         };
 
         var orc = new Orchestrator({
-            A: {
-                input: 'B'
-            }
+            A: [
+                'B'
+            ]
         }, {
             load: function load(name) {
                 return execFuncs[name];
@@ -99,8 +99,8 @@ describe(__filename, function () {
         };
 
         var orc = new Orchestrator({
-            A: {},
-            B: {}
+            A: [],
+            B: []
         }, {
             load: function load(name) {
                 return execFuncs[name];
@@ -122,12 +122,12 @@ describe(__filename, function () {
         };
 
         var orc = new Orchestrator({
-            A: {
-                input: 'B'
-            },
-            B: {
-                input: 'C'
-            }
+            A: [
+                'B'
+            ],
+            B: [
+                'C'
+            ]
         }, {
             load: function load(name) {
                 return execFuncs[name];

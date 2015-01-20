@@ -11,7 +11,7 @@ describe(__filename, function () {
 
     it('should fail to run task', function (done) {
         var orc = new Orchestrator({
-            A: {}
+            A: []
         }, {
             load: function load(name) {
             }
@@ -29,7 +29,7 @@ describe(__filename, function () {
     it('should run a single task', function (done) {
         var execFunc = createTask('A');
         var orc = new Orchestrator({
-            A: {}
+            A: []
         }, {
             load: function load(name) {
                 return execFunc;
@@ -52,8 +52,8 @@ describe(__filename, function () {
             B: createTask('B')
         };
         var orc = new Orchestrator({
-            A: {},
-            B: {}
+            A: [],
+            B: []
         }, {
             load: function load(name) {
                 return tasks[name];
@@ -82,9 +82,7 @@ describe(__filename, function () {
             B: createTask('B')
         };
         var orc = new Orchestrator({
-            A: {
-                asyncB: 'B'
-            }
+            A: ['B']
         }, {
             load: function load(name) {
                 return tasks[name];
@@ -123,17 +121,9 @@ describe(__filename, function () {
         };
 
         index.start({
-            A: {
-                asyncB: 'B',
-                asyncC: 'C'
-            },
-            B: {
-                asyncC: 'C'
-            },
-            D: {
-                asyncA: 'A',
-                asyncB: 'B'
-            }
+            A: ['B', 'C'],
+            B: ['C'],
+            D: ['A', 'B']
         }, {
             load: function load(name) {
                 return tasks[name];
@@ -152,7 +142,7 @@ describe(__filename, function () {
     it('should cancel a single task', function (done) {
         var execFunc = createTask('A');
         var orc = new Orchestrator({
-            A: {}
+            A: []
         }, {
             load: function load(name) {
                 return execFunc;
@@ -174,7 +164,7 @@ describe(__filename, function () {
     it('should cancel a single task gracefully with default result for all tasks', function (done) {
         var execFunc = createTask('A');
         var orc = new Orchestrator({
-            A: {}
+            A: []
         }, {
             load: function load(name) {
                 return execFunc;
@@ -197,7 +187,7 @@ describe(__filename, function () {
     it('should cancel a single task gracefully with specific result', function (done) {
         var execFunc = createTask('A');
         var orc = new Orchestrator({
-            A: {}
+            A: []
         }, {
             load: function load(name) {
                 return execFunc;
@@ -227,9 +217,7 @@ describe(__filename, function () {
             B: createTask('B')
         };
         var orc = new Orchestrator({
-            A: {
-                dataFromB: 'B'
-            }
+            A: ['B']
         }, {
             load: function load(name) {
                 return tasks[name];
@@ -263,9 +251,7 @@ describe(__filename, function () {
             B: createTask('B')
         };
         var orc = new Orchestrator({
-            A: {
-                dataFromB: 'B'
-            }
+            A: ['B']
         }, {
             load: function load(name) {
                 return tasks[name];
@@ -296,7 +282,7 @@ describe(__filename, function () {
     it('should cancel a single task gracefully, but with error', function (done) {
         var execFunc = createTask('A');
         var orc = new Orchestrator({
-            A: {}
+            A: []
         }, {
             load: function load(name) {
                 return execFunc;
@@ -328,8 +314,8 @@ describe(__filename, function () {
             B: createTask('B')
         };
         var orc = new Orchestrator({
-            A: {},
-            B: {}
+            A: [],
+            B: []
         }, {
             load: function load(name) {
                 return tasks[name];
@@ -358,9 +344,7 @@ describe(__filename, function () {
             B: createTask('B')
         };
         var orc = new Orchestrator({
-            A: {
-                asyncB: 'B'
-            }
+            A: ['B']
         }, {
             load: function load(name) {
                 return tasks[name];
@@ -387,10 +371,8 @@ describe(__filename, function () {
 function createTask(name, delay) {
     function exec(input, callback) {
         input.ctx.chain = input.ctx.chain || [];
-        var inputData = Object.keys(input).filter(function (paramName) {
-            return /^async/.test(paramName);
-        }).map(function (paramName) {
-            return input[paramName];
+        var inputData = Object.keys(input.dependencies || {}).map(function (paramName) {
+            return input.dependencies[paramName];
         });
 
         async.parallel(inputData || [], function (err, results) {

@@ -149,7 +149,7 @@ describe(__filename, function () {
         var taskA = new Task('A', function exec(input, callback) {
             var self = this;
             // wait for data from B
-            input.B(function (err, result) {
+            input.dependencies.B(function (err, result) {
                 assert.equal('test-dataB', result.data);
                 assert.equal('bar', input.ctx.foo);
                 assert.equal('test-dataA', input.data);
@@ -196,7 +196,7 @@ describe(__filename, function () {
             async.parallel([
                 function onB(cb) {
                     // wait for data from B
-                    input.B(function (err, result) {
+                    input.dependencies.B(function (err, result) {
                         assert.ok(!err);
                         assert.equal('data-B', result);
                         cb(null, result);
@@ -204,7 +204,7 @@ describe(__filename, function () {
                 },
                 function onC(cb) {
                     // wait for data from B
-                    input.C(function (err, result) {
+                    input.dependencies.C(function (err, result) {
                         assert.ok(!err);
                         assert.equal('data-C', result);
                         cb(null, result);
@@ -237,7 +237,7 @@ describe(__filename, function () {
             assert.equal('bar', input.ctx.foo);
             assert.equal('test-dataD', input.data);
 
-            input.A(function (err, result) {
+            input.dependencies.A(function (err, result) {
                 assert.ok(!err);
                 chain.push('D');
                 callback(null, {
@@ -287,7 +287,7 @@ describe(__filename, function () {
         var taskA = new Task('A', function exec(input, callback) {
             var self = this;
             // wait for data from B
-            input.B(function (err, result) {
+            input.dependencies.B(function (err, result) {
                 assert.ok(err);
                 assert.equal('test error', err.message);
                 callback(null, input);
