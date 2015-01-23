@@ -78,11 +78,13 @@ describe(__filename, function () {
 
     it('should run two tasks, one depends on the other', function (done) {
         var tasks = {
-            A: createNonMappedTask('A'),
+            A: createMappedTask('A'),
             B: createNonMappedTask('B')
         };
         var orc = new Orchestrator({
-            A: ['B']
+            A: {
+                data: 'B'
+            }
         }, {
             load: function load(name) {
                 return tasks[name];
@@ -110,10 +112,10 @@ describe(__filename, function () {
 
     it('should run many tasks, some depend on the others', function (done) {
         var tasks = {
-            A: createNonMappedTask('A'),
-            B: createNonMappedTask('B'),
+            A: createMappedTask('A'),
+            B: createMappedTask('B'),
             C: createNonMappedTask('C'),
-            D: createNonMappedTask('D')
+            D: createMappedTask('D')
         };
 
         var ctx = {
@@ -121,9 +123,17 @@ describe(__filename, function () {
         };
 
         index.start({
-            A: ['B', 'C'],
-            B: ['C'],
-            D: ['A', 'B']
+            A: {
+                dataB: 'B',
+                dataC: 'C'
+            },
+            B: {
+                dataC: 'C'
+            },
+            D: {
+                dataA: 'A',
+                dataB: 'B'
+            }
         }, {
             load: function load(name) {
                 return tasks[name];
@@ -142,7 +152,7 @@ describe(__filename, function () {
     it('should run many tasks, some depend on the others, mapped tasks', function (done) {
         var tasks = {
             A: createMappedTask('A'),
-            B: createNonMappedTask('B'),
+            B: createMappedTask('B'),
             C: createNonMappedTask('C'),
             D: createMappedTask('D')
         };
