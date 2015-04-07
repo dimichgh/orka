@@ -22,78 +22,175 @@ The configuration is called 'execution plan' and is based on one level of depend
 The task is simple unit of execution.
 
 Propeties:
- * 'in' specifies topics that the task may listen to.
+ * '@in' specifies topics that the task may listen to.
     * in case 'in' is missing, it is considered a leaf task without any dependencies on other topics.
- * 'out' specifies the topics it will publish results to.
+ * '@out' specifies the topics it will publish results to.
     * in case 'out' is missing, it will publish under its name.
- * 'error' specifies the topics it will publish error in case of error.
-    * in case the property is missing, it will publish under 'out' topic.
- * 'if' specifies the topics the task will wait publishing to before starting the execution
+ * '@if' specifies the topics the task will wait for before starting the execution.
 
 Behaviors:
- * task is started immediately unless 'if' is specified.
+ * task is started immediately unless '@if' is specified.
  * can publish multiple times to the topics.
- * can receive multiple events from topics subsrcibed.
+ * different tasks can publish to the same topic.
+ * can receive multiple events from topics subscribed.
+ * task never directly depends on the other, only via TOPIC
 
 ## Execution plan
 
-Simple example:
+There are a few use cases:
+* Task A does not depend on task B and both will start and execute in parallel
+* Task A directly depends on task B and will first execute task B and wait for completion before starting. This is useful for example to implement caching where one does not want to start expensive call before cache is found to have no data.
+* Task A does not directly dependds on task B, but will use data published by task B, both will start and if A needs data published by B it will go into callback waiting at some point.
+
+* One task
 ```javascript
+// A will publish results under topic 'A'
+var plan = ['A'];
+// or A will publish results under topic 'topicA'
 var plan = {
-    A: ['B', 'C'],
-    B: ['C'],
-    D: ['A', 'B']
+    A: {
+        @out: 'topicA'
+    }
+}
+// or multiple topics
+var plan = {
+    A: {
+        @out: ['topicA', 'topicA+']
+    }
+}
+// decoupling by mapping output to specific topics
+var plan = {
+    A: {
+        @out: {
+            result: 'topicA',
+            error: 'topicA-error'
+        }
+    }
+}
+```
+
+* Two parallel tasks
+```javascript
+// these will execute in parallel and publish results under topics 'A' and 'B'
+var plan = ['A', 'B'];
+// or with empty attributes
+var plan = {
+    A: {},
+    B: {}
+};
+// or when A and B publishes to specific topics
+var plan = {
+    A: {
+        @out: 'topicA'
+    },
+    B: {
+        @out: ['topicB', 'topicB+']
+    }
 };
 ```
 
-In the above example, each task would publish the result under its name unless explicit name specified.
-So, if we have A: ['B'] it would use for data from topic 'B' and publish the results under topic 'A'.
-
-Example of task publishing to specific topic:
+* Group of tasks, where one indirectly depends on other task via publishing to specific topics
 ```javascript
+// B uses results from A
 var plan = {
-    A: {
-        @in: ['B', 'C'],
-        @out: 'topic'
+    B: 'A'
+};
+// or
+var plan = {
+    B: {
+        @in: 'A'
     }
 };
-// OR
+// or decoupling by mapping B to topic published by A
 var plan = {
+    B: {
+        @in: 'topicA'
+    }
     A: {
-        @in: ['B', 'C'],
-        @out: ['topic1', 'topic2']
+        @out: 'topicA'
     }
 };
-```
-
-### Mapping topics to input parameters
-
-In the below example task A uses two parameters 'inputB' and 'inputC' to get data. The parameters mapped to topic 'B' and topic 'C' accordingly.
-```javascript
+// or more decoupling by mapping input of B to topic of published by A
 var plan = {
-    A: {
+    B: {
         @in: {
-            'inputB': 'B',
-            'inputC': 'C'
-        },
-        @out: 'topic'
+            inputB: 'topicA'
+        }
+    }
+    A: {
+        @out: 'topicA'
     }
 };
 ```
 
-### Conditional execution
+* Multiple dependencies
+```javascript
+// or C depends on A and B, i.e. uses data published under 'A' and 'B'
+var plan = {
+    C: ['A', 'B']
+};
+// or
+var plan = {
+    C: {
+        @in: ['A', 'B']
+    }
+};
+// or completely decoupling by mapping inputs to tasks topics
+var plan = {
+    C: {
+        @in: {
+            inputA: 'A',
+            inputB: 'B'
+        }
+    }
+};
+// or even more decoupling by mapping inputs to defined topics
+var plan = {
+    C: {
+        @in: {
+            inputA: 'topicA',
+            inputB: 'topicB'
+        }
+    },
+    A: {
+        @out: 'topicA'
+    },
+    B: {
+        @out: 'topicB'
+    }
+};
+```
 
+* Mixed of parallel and series tasks
+```javascript
+var plan = {
+    B: ['A', 'C'],
+    C: ['A']
+};
+```
+
+### Conditional execution with '@if'
 Unless explicitly specified, the task would execute immediately. To delay task execution one can use 'if' section that would listen to the specific topics to complete, before the task can be executed.
 ```javascript
 var plan = {
     A: {
-        @if: ['D', 'B'],
-        @in: ['B', 'C'],
-        @out: 'A'
+        @if: ['D', 'B']
     }
 };
 ```
-In the above example A will task for two topics to get published and then it will start executing. Once running it would expect data from two other topics in 'in' section of the task. The result will be published under topic 'A'
+
+## Usa cases
+
+#### Series execution
+This will execute tasks sequentially.
+```javascript
+// A then B then C
+var plan = {
+    A: {}
+    B: { @if: 'A' }
+    C: { @if: 'B' }
+}
+```
 
 ### Caching example
 
@@ -110,58 +207,20 @@ var plan = {
 };
 ```
 
-#### Series execution
-This will execute tasks sequentially.
-```javascript
-var plan = {
-    A: [],
-    B: { @if: 'A' }
-    C: { @if: 'B' }
-}
-
-// Or simpler form which will execute tasks and each task will publish results under its name
-var plan = {
-    @series: [A, B, C]
-};
-// Or this will execute a series of tasks sequentially and publish to common topic as well as to the task specified topics
-var plan = {
-    @series: {
-        A: {
-            @out: 'TOPIC_A'
-        },
-        B: {
-            @out: 'TOPIC_B'
-        },
-        C: {
-            @out: 'TOPIC_C'
-        },
-        @out: 'TOPIC'
-    }
-};
-// Or this will execute the tasks and publish each result under 'TOPIC' as well as nuder tasks names
-var plan = {
-    @series: {
-        @run: [A, B, C],
-        @out: 'TOPIC'
-    }
-};
-```
-
-#### First execution
-Will sequentially execute tasks one after the other till one publishes result that is not undefined.
-```javascript
-var plan = {
-    @first: [A, B, C]
-};
-```
-This one can be used for cache fallback
+#### Caching example
 ```javascript
 var plan = {
     A: {
         @in: 'TOPIC'
     },
-    @first: {
-        @run: [B, C],
+    C: {
+        @out: {
+            result: 'TOPIC',
+            error: 'CACHE_ERROR'
+        }
+    },
+    B: {
+        @if: 'CACHE_ERROR',
         @out: 'TOPIC'
     }
 };
@@ -169,19 +228,21 @@ var plan = {
 
 ## Task loading
 
-Given the following execution plan
+Given the caching example
 ```javascript
-var plan = {
-    A: {
-        @in: {
-            'input': 'TOPIC',
-        }
-    },
-    @first: {
-        @run: [B, C],
-        @out: 'TOPIC'
+A: {
+    @in: 'TOPIC'
+},
+C: {
+    @out: {
+        result: 'TOPIC',
+        error: 'CACHE_ERROR'
     }
-};
+},
+B: {
+    @if: 'CACHE_ERROR',
+    @out: 'TOPIC'
+}
 ```
 
 The tasks can be loaded via options.load function or require by default:
@@ -290,7 +351,7 @@ orka.start(executionPlan, {
 });
 // example of task A that depends on B
 function taskA(input, callback) {
-    inputget('data', function (err, data) {
+    input.get('data', function (err, data) {
         // do some data process for task B results
         // complete task A
         callback(err, {
