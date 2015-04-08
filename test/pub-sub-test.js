@@ -65,6 +65,45 @@ describe(__filename, function () {
         });
     });
 
+    it('should get topic only once', function(done) {
+        var manager = pubsub.create('test manager');
+        var topic = manager.topic('A');
+        var count = 0;
+        topic.once(function subA(err, data) {
+            assert.ok(!err);
+            assert.ok(/^result/.test(data));
+            count++;
+        });
+        topic.pub('result1', function () {
+            assert.equal(1, count);
+            assert.equal(1, topic.queue.length);
+
+            topic.pub('result2', function () {
+                assert.equal(1, count);
+                assert.equal(2, topic.queue.length);
+                done();
+            });
+        });
+    });
+
+    it('should get topic only once, publish happened before', function(done) {
+        var manager = pubsub.create('test manager');
+        var topic = manager.topic('A');
+        var count = 0;
+        topic.pub('result1');
+        topic.pub('result2');
+        topic.once(function subA(err, data) {
+            assert.ok(!err);
+            assert.ok(/^result/.test(data));
+            count++;
+        });
+        setTimeout(function () {
+            assert.equal(1, count);
+            assert.equal(2, topic.queue.length);
+            done();
+        }, 20);
+    });
+
     it('should correctly detect publishing loop and throw error', function (done) {
         var manager = pubsub.create('test manager');
         var topic = manager.topic('A');
@@ -113,7 +152,7 @@ describe(__filename, function () {
             assert.ok(!err);
             complete ?
                 assert.equal('done', data) :
-                assert.equal('result', data);
+                assert.ok(/^result/.test(data));
 
             count++;
         });
@@ -125,7 +164,7 @@ describe(__filename, function () {
                 assert.equal(1, topic.queue.length);
                 next();
             },
-            topic.pub.bind(topic, 'result'),
+            topic.pub.bind(topic, 'result2'),
             function validate(next) {
                 assert.equal(2, count);
                 assert.equal(2, topic.queue.length);
@@ -137,10 +176,10 @@ describe(__filename, function () {
                 assert.equal(3, topic.queue.length);
                 next();
             },
-            topic.pub.bind(topic, 'result')
+            topic.pub.bind(topic, 'result3')
         ], function (err) {
             assert.ok(err);
-            assert.equal('Error: tried to publish after complete event', err.message);
+            assert.ok(/Error: tried to publish after complete event/.test(err.message));
             done();
         });
     });
@@ -153,14 +192,14 @@ describe(__filename, function () {
             assert.ok(!err);
             complete ?
                 assert.equal('done', data) :
-                assert.equal('result', data);
+                assert.ok(/^result/.test(data));
 
             count++;
         });
 
         async.series([
             topic.pub.bind(topic, 'result'),
-            topic.pub.bind(topic, 'result'),
+            topic.pub.bind(topic, 'result1'),
             manager.complete.bind(manager, 'done'),
             function validate(next) {
                 assert.equal(3, count);
@@ -172,7 +211,7 @@ describe(__filename, function () {
                     assert.ok(!err);
                     complete ?
                         assert.equal('done', data) :
-                        assert.equal('result', data);
+                        assert.ok(/^result/.test(data));
 
                     count++;
                 }, next);
@@ -191,27 +230,27 @@ describe(__filename, function () {
         var count = 0;
         topic.sub(function subA(err, data) {
             assert.ok(!err);
-            assert.equal('result', data);
+            assert.ok(/^result/.test(data));
             count++;
         });
-        topic.pub('result', function () {
+        topic.pub('result1', function () {
             assert.equal(1, count);
         });
-        topic.pub('result', function () {
+        topic.pub('result2', function () {
             assert.equal(2, count);
         });
         assert.equal(2, topic.queue.length);
-        assert.deepEqual([{'type':'resolve','data':'result'},{'type':'resolve','data':'result'}], topic.queue);
+        assert.deepEqual([{'type':'resolve','data':'result1'},{'type':'resolve','data':'result2'}], topic.queue);
 
         topic.sub(function subB(err, data) {
             assert.ok(!err);
-            assert.equal('result', data);
+            assert.ok(/^result/.test(data));
             count++;
         }, function () {
             assert.equal(4, count);
             assert.equal(2, topic.queue.length);
 
-            topic.pub('result', function () {
+            topic.pub('result3', function () {
                 assert.equal(6, count);
                 assert.equal(3, topic.queue.length);
                 done();
@@ -226,27 +265,27 @@ describe(__filename, function () {
         var count = 0;
         topic.sub(function subA(err, data, complete) {
             assert.ok(!err);
-            complete ? assert.equal('done', data) : assert.equal('result', data);
+            complete ? assert.equal('done', data) : assert.ok(/^result/.test(data));
             count++;
         });
-        topic.pub('result', function () {
+        topic.pub('result1', function () {
             assert.equal(1, count);
         });
-        topic.pub('result', function () {
+        topic.pub('result2', function () {
             assert.equal(2, count);
         });
         assert.equal(2, topic.queue.length);
-        assert.deepEqual([{'type':'resolve','data':'result'},{'type':'resolve','data':'result'}], topic.queue);
+        assert.deepEqual([{'type':'resolve','data':'result1'},{'type':'resolve','data':'result2'}], topic.queue);
 
         topic.sub(function subB(err, data, complete) {
             assert.ok(!err);
-            complete ? assert.equal('done', data) : assert.equal('result', data);
+            complete ? assert.equal('done', data) : assert.ok(/^result/.test(data));
             count++;
         }, function () {
             assert.equal(4, count);
             assert.equal(2, topic.queue.length);
 
-            topic.pub('result', function () {
+            topic.pub('result3', function () {
                 assert.equal(6, count);
                 assert.equal(3, topic.queue.length);
                 manager.complete('done', function () {
@@ -267,27 +306,27 @@ describe(__filename, function () {
             assert.ok(complete && err || !complete && !err);
             complete ?
                 assert.equal('test error', err.message) :
-                assert.equal('result', data);
+                assert.ok(/^result/.test(data));
             count++;
         });
-        topic.pub('result', function () {
+        topic.pub('result1', function () {
             assert.equal(1, count);
         });
-        topic.pub('result', function () {
+        topic.pub('result2', function () {
             assert.equal(2, count);
         });
         assert.equal(2, topic.queue.length);
-        assert.deepEqual([{'type':'resolve','data':'result'},{'type':'resolve','data':'result'}], topic.queue);
+        assert.deepEqual([{'type':'resolve','data':'result1'},{'type':'resolve','data':'result2'}], topic.queue);
 
         topic.sub(function subB(err, data, complete) {
             assert.ok(complete && err || !complete && !err);
-            complete ? assert.equal('test error', err.message) : assert.equal('result', data);
+            complete ? assert.equal('test error', err.message) : assert.ok(/^result/.test(data));
             count++;
         }, function () {
             assert.equal(4, count);
             assert.equal(2, topic.queue.length);
 
-            topic.pub('result', function () {
+            topic.pub('result3', function () {
                 assert.equal(6, count);
                 assert.equal(3, topic.queue.length);
                 manager.complete(new Error('test error'), function () {

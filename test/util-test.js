@@ -5,6 +5,24 @@ var utils = require('../lib/utils');
 
 describe(__filename, function () {
 
+    it('should normalize simple task, params null', function () {
+        assert.deepEqual([{'name':'A'}], utils.normalizePlan({
+            A: null
+        }));
+    });
+
+    it('should normalize simple task, params are empty string', function () {
+        assert.deepEqual([{'name':'A'}], utils.normalizePlan({
+            A: ''
+        }));
+    });
+
+    it('should normalize simple task, params undefined', function () {
+        assert.deepEqual([{'name':'A'}], utils.normalizePlan({
+            A: undefined
+        }));
+    });
+
     it('should normalize simple task', function () {
         assert.deepEqual([{'name':'A'}], utils.normalizePlan({
             A: []
@@ -89,6 +107,17 @@ describe(__filename, function () {
                 '@out': 'T2'
             }
         }));
+    });
+
+    it('should normalize two tasks', function () {
+        assert.deepEqual([{'name':'A'},{'name':'B'}], utils.normalizePlan({
+            A: [],
+            B: []
+        }));
+    });
+
+    it('should normalize two tasks, as array', function () {
+        assert.deepEqual([{'name':'A'},{'name':'B'}], utils.normalizePlan(['A', 'B']));
     });
 
     it('should normalize task with dependency', function () {
@@ -509,5 +538,20 @@ describe(__filename, function () {
         });
         done();
     });
+});
 
+describe('hashes', function () {
+    var str = 'some long string, quyruier ewejrhwkrjw rwekjhrwekr wekrhwe rhwekrhw kwehr w';
+
+    it('should calculate string hash', function () {
+        for (var i = 0; i < 100000; i++) {
+            utils.stringHash(str);
+        }
+    });
+
+    it('should calculate hash from string', function () {
+        for (var i = 0; i < 100000; i++) {
+            utils.hash(str);
+        }
+    });
 });

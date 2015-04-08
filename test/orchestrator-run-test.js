@@ -9,6 +9,10 @@ var index = require('../lib');
 
 describe(__filename, function () {
 
+    beforeEach(function () {
+        require('../lib/orchestrator').reset();
+    });
+
     it('should fail to run task', function (done) {
         var orc = new Orchestrator({
             A: []
@@ -19,9 +23,9 @@ describe(__filename, function () {
 
         orc.start({
             foo: 'bar'
-        }, function (err, result) {
-            assert.ok(!err);
-            assert.equal('Task A cannot be found', result.A.err.message);
+        }).on('A', function (err, result) {
+            assert.ok(err);
+            assert.equal('Task A cannot be found', err.message);
             done();
         });
     });
@@ -38,10 +42,9 @@ describe(__filename, function () {
 
         orc.start({
             foo: 'bar'
-        }, function (err, result) {
+        }).get('A', function (err, result) {
             assert.ok(!err);
-            assert.ok(!result.A.err);
-            assert.equal('bar', result.A.output.input.ctx.foo);
+            assert.equal('bar', result.input.ctx.foo);
             done();
         });
     });
@@ -60,20 +63,26 @@ describe(__filename, function () {
             }
         });
 
-        orc.start({
+        var output = orc.start({
             foo: 'bar'
-        }, function (err, result) {
-            assert.ok(!err);
-            assert.equal(2, Object.keys(result).length);
-
-            assert.ok(!result.A.err);
-            assert.equal('bar', result.A.output.input.ctx.foo);
-
-            assert.ok(!result.B.err);
-            assert.equal('bar', result.B.output.input.ctx.foo);
-
-            done();
         });
+
+        async.series([
+            function (next) {
+                output.get('A', function (err, data) {
+                    assert.ok(!err);
+                    assert.equal('bar', data.input.ctx.foo);
+                    next();
+                });
+            },
+            function (next) {
+                output.get('B', function (err, data) {
+                    assert.ok(!err);
+                    assert.equal('bar', data.input.ctx.foo);
+                    next();
+                });
+            }
+        ], done);
     });
 
     it('should run two tasks, one depends on the other', function (done) {
@@ -83,8 +92,11 @@ describe(__filename, function () {
         };
         var orc = new Orchestrator({
             A: {
-                data: 'B'
-            }
+                '@in': {
+                    data: 'B'
+                }
+            },
+            B: ''
         }, {
             load: function load(name) {
                 return tasks[name];
@@ -94,16 +106,25 @@ describe(__filename, function () {
         var ctx = {
             foo: 'bar'
         };
-        orc.start(ctx, function (err, result) {
+        var output = orc.start(ctx);
+
+        async.series([
+            function (next) {
+                output.get('A', function (err, data) {
+                    assert.ok(!err);
+                    assert.equal('bar', data.input.ctx.foo);
+                    next();
+                });
+            },
+            function (next) {
+                output.get('B', function (err, data) {
+                    assert.ok(!err);
+                    assert.equal('bar', data.input.ctx.foo);
+                    next();
+                });
+            }
+        ], function (err) {
             assert.ok(!err);
-            assert.equal(2, Object.keys(result).length);
-
-            assert.ok(!result.A.err);
-            assert.equal('bar', result.A.output.input.ctx.foo);
-
-            assert.ok(!result.B.err);
-            assert.equal('bar', result.B.output.input.ctx.foo);
-
             assert.equal('B->A', ctx.chain.join('->'));
 
             done();
@@ -122,26 +143,62 @@ describe(__filename, function () {
             foo: 'bar'
         };
 
-        index.start({
+        var output = index.create({
             A: {
-                dataB: 'B',
-                dataC: 'C'
+                '@in': {
+                    dataB: 'B',
+                    dataC: 'C'
+                }
             },
             B: {
-                dataC: 'C'
+                '@in': {
+                    dataC: 'C'
+                }
             },
+            C: [],
             D: {
-                dataA: 'A',
-                dataB: 'B'
+                '@in': {
+                    dataA: 'A',
+                    dataB: 'B'
+                }
             }
         }, {
             load: function load(name) {
                 return tasks[name];
+            }
+        }).start(ctx);
+
+        async.series([
+            function (next) {
+                output.get('A', function (err, data) {
+                    assert.ok(!err);
+                    assert.equal('bar', data.input.ctx.foo);
+                    next();
+                });
             },
-            ctx: ctx
-        }, function (err, result) {
+            function (next) {
+                output.get('C', function (err, data) {
+                    assert.ok(!err);
+                    assert.equal('bar', data.input.ctx.foo);
+                    next();
+                });
+            },
+            function (next) {
+                output.get('D', function (err, data) {
+                    assert.ok(!err);
+                    assert.equal('bar', data.input.ctx.foo);
+                    next();
+                });
+            },
+            function (next) {
+                output.get('B', function (err, data) {
+                    assert.ok(!err);
+                    assert.equal('bar', data.input.ctx.foo);
+                    next();
+                });
+            }
+        ], function (err) {
             assert.ok(!err);
-            assert.equal(4, Object.keys(result).length);
             assert.equal('C->B->A->D', ctx.chain.join('->'));
 
             done();
@@ -149,41 +206,25 @@ describe(__filename, function () {
 
     });
 
-    it('should run many tasks, some depend on the others, mapped tasks', function (done) {
-        var tasks = {
-            A: createMappedTask('A'),
-            B: createMappedTask('B'),
-            C: createNonMappedTask('C'),
-            D: createMappedTask('D')
-        };
-
-        var ctx = {
-            foo: 'bar'
-        };
-
-        index.start({
-            A: {
-                dataFromB: 'B',
-                dataFromC: 'C'
-            },
-            B: ['C'],
-            D: {
-                dataFromA: 'A',
-                dataFromB: 'B'
-            }
-        }, {
+    it('should cancel orchestrartor', function (done) {
+        var execFunc = createNonMappedTask('A');
+        var orc = new Orchestrator(['A'], {
             load: function load(name) {
-                return tasks[name];
-            },
-            ctx: ctx
-        }, function (err, result) {
-            assert.ok(!err);
-            assert.equal(4, Object.keys(result).length);
-            assert.equal('C->B->A->D', ctx.chain.join('->'));
-
-            done();
+                return execFunc;
+            }
         });
 
+        orc
+        .on('error', function (err) {
+            assert.ok(/tried to publish after complete event/.test(err.message));
+        })
+        .start({
+            foo: 'bar'
+        }).on('A', function (err, result) {
+            assert.ok(err);
+            assert.equal('test error', err.message);
+            done();
+        }).stop(new Error('test error'));
     });
 
     it('should cancel a single task', function (done) {
@@ -194,16 +235,47 @@ describe(__filename, function () {
             }
         });
 
-        var control = orc.start({
+        orc
+        .on('error', function (err) {
+            assert.ok(/tried to publish after complete event/.test(err.message));
+        })
+        .start({
             foo: 'bar'
-        }, function (err, result) {
+        }).on('A', function (err, result) {
+            if (err) {
+                assert.ok(err);
+                assert.equal('test error', err.message);
+                done();
+            }
+        }).task('A').stop(new Error('test error'));
+    });
+
+    it('should cancel orchestrator gracefully with default result for all tasks', function (done) {
+        var execFunc = createNonMappedTask('A');
+        var orc = new Orchestrator({
+            A: []
+        }, {
+            load: function load(name) {
+                return execFunc;
+            }
+        });
+
+        var control = orc
+        .on('error', function (err) {
+            assert.ok(/tried to publish after complete event/.test(err.message));
+        })
+        .start({
+            foo: 'bar'
+        })
+        .on('*', function (err, data) {
             assert.ok(!err);
-            assert.ok(result.A.err);
-            assert.equal('test error', result.A.err.message);
+            assert.equal('stopped', data.result);
             done();
         });
 
-        control.stop(new Error('test error'));
+        control.stop({
+            result: 'stopped'
+        });
     });
 
     it('should cancel a single task gracefully with default result for all tasks', function (done) {
@@ -216,43 +288,24 @@ describe(__filename, function () {
             }
         });
 
-        var control = orc.start({
+        var control = orc
+        .on('error', function (err) {
+            assert.ok(/tried to publish after complete event/.test(err.message));
+        })
+        .start({
             foo: 'bar'
-        }, function (err, result) {
+        })
+        .on('A', function (err, data) {
             assert.ok(!err);
-            assert.equal('stopped', result.A.output.result);
-            done();
+            if (data.result) {
+                // waiting for the right data to come
+                assert.equal('stopped', data.result);
+                done();
+            }
         });
 
-        control.stop({
+        control.task('A').stop({
             result: 'stopped'
-        });
-    });
-
-    it('should cancel a single task gracefully with specific result', function (done) {
-        var execFunc = createNonMappedTask('A');
-        var orc = new Orchestrator({
-            A: []
-        }, {
-            load: function load(name) {
-                return execFunc;
-            }
-        });
-
-        var control = orc.start({
-            foo: 'bar'
-        }, function (err, result) {
-            assert.ok(!err);
-            assert.equal('stopped', result.A.output.result);
-            done();
-        });
-
-        control.stop({
-            tasks: {
-                A: {
-                    result: 'stopped'
-                }
-            }
         });
     });
 
@@ -262,31 +315,43 @@ describe(__filename, function () {
             B: createNonMappedTask('B')
         };
         var orc = new Orchestrator({
-            A: ['B']
+            A: ['B'],
+            B: ''
         }, {
             load: function load(name) {
                 return tasks[name];
             }
         });
 
-        var control = orc.start({
+        var control = orc.tolerant(true).start({
             foo: 'bar'
-        }, function (err, result) {
-            assert.ok(!err);
-            assert.equal('A stopped', result.A.output.result);
-            assert.equal('B stopped', result.B.output.result);
-            done();
         });
 
-        control.stop({
-            tasks: {
-                A: {
-                    result: 'A stopped'
-                },
-                B: {
-                    result: 'B stopped'
-                }
+        async.series([
+            function (next) {
+                control.get('A', function (err, data) {
+                    assert.ok(!err);
+                    if (data.result) {
+                        assert.equal('A stopped', data.result);
+                        next();
+                    }
+                });
+            },
+            function (next) {
+                control.get('B', function (err, data) {
+                    assert.ok(!err);
+                    if (data.result) {
+                        assert.equal('B stopped', data.result);
+                        next();
+                    }
+                });
             }
+        ], done);
+
+        control.task('A').stop({
+            result: 'A stopped'
+        }).task('B').stop({
+            result: 'B stopped'
         });
     });
 
@@ -296,7 +361,8 @@ describe(__filename, function () {
             B: createNonMappedTask('B')
         };
         var orc = new Orchestrator({
-            A: ['B']
+            A: ['B'],
+            B: ''
         }, {
             load: function load(name) {
                 return tasks[name];
@@ -305,50 +371,32 @@ describe(__filename, function () {
 
         var control = orc.start({
             foo: 'bar'
-        }, function (err, result) {
-            assert.ok(!err);
-            assert.equal('test error', result.A.err.message);
-            assert.equal('B stopped', result.B.output.result);
-            done();
         });
 
-        control.stop({
-            tasks: {
-                A: {
-                    err: new Error('test error')
-                },
-                B: {
-                    result: 'B stopped'
-                }
+        async.series([
+            function (next) {
+                control.get('A', function (err, data) {
+                    if (err) {
+                        assert.equal('test error', err.message);
+                        next();
+                    }
+                });
+            },
+            function (next) {
+                control.get('B', function (err, data) {
+                    assert.ok(!err);
+                    if (data.result) {
+                        assert.equal('B stopped', data.result);
+                        next();
+                    }
+                });
             }
-        });
-    });
+        ], done);
 
-    it('should cancel a single task gracefully, but with error', function (done) {
-        var execFunc = createNonMappedTask('A');
-        var orc = new Orchestrator({
-            A: []
-        }, {
-            load: function load(name) {
-                return execFunc;
-            }
-        });
-
-        var control = orc.start({
-            foo: 'bar'
-        }, function (err, result) {
-            assert.ok(!err);
-            assert.ok(result.A.err);
-            assert.equal('test error', result.A.err.message);
-            done();
-        });
-
-        control.stop({
-            tasks: {
-                A: {
-                    err: new Error('test error')
-                }
-            }
+        control
+        .task('A').stop(new Error('test error'))
+        .task('B').stop({
+            result: 'B stopped'
         });
     });
 
@@ -368,46 +416,27 @@ describe(__filename, function () {
 
         var control = orc.start({
             foo: 'bar'
-        }, function (err, result) {
-            assert.ok(!err);
-            assert.ok(result.A.err);
-            assert.equal('test error', result.A.err.message);
-            assert.ok(!result.B.err);
-            done();
         });
 
-        orc.loadTask('B').output.done(function (err, result) {
-            control.stop(new Error('test error'));
-        });
-    });
-
-    it('should run two tasks cancel the last task, map dependencies', function (done) {
-        var tasks = {
-            A: createMappedTask('A', 500),
-            B: createMappedTask('B')
-        };
-        var orc = new Orchestrator({
-            A: {},
-            B: {}
-        }, {
-            load: function load(name) {
-                return tasks[name];
+        async.series([
+            function (next) {
+                control.get('A', function (err, data) {
+                    if (err) {
+                        assert.equal('test error', err.message);
+                        next();
+                    }
+                });
+            },
+            function (next) {
+                control.get('B', function (err, data) {
+                    assert.ok(!err);
+                    assert.ok(data.input);
+                    next();
+                });
             }
-        });
+        ], done);
 
-        var control = orc.start({
-            foo: 'bar'
-        }, function (err, result) {
-            assert.ok(!err);
-            assert.ok(result.A.err);
-            assert.equal('test error', result.A.err.message);
-            assert.ok(!result.B.err);
-            done();
-        });
-
-        orc.loadTask('B').output.done(function (err, result) {
-            control.stop(new Error('test error'));
-        });
+        control.task('A').stop(new Error('test error'));
     });
 
     it('should run two tasks B->A and cancel the last task', function (done) {
@@ -416,7 +445,8 @@ describe(__filename, function () {
             B: createNonMappedTask('B')
         };
         var orc = new Orchestrator({
-            A: ['B']
+            A: ['B'],
+            B: ''
         }, {
             load: function load(name) {
                 return tasks[name];
@@ -425,69 +455,54 @@ describe(__filename, function () {
 
         var control = orc.start({
             foo: 'bar'
-        }, function (err, result) {
-            assert.ok(!err);
-            assert.ok(result.A.err);
-            assert.equal('test error', result.A.err.message);
-            assert.ok(!result.B.err);
-            done();
         });
 
-        orc.loadTask('B').output.done(function (err, result) {
-            control.stop(new Error('test error'));
-        });
-    });
-
-    it('should run two tasks B->A and cancel the last task, map dependencies', function (done) {
-        var tasks = {
-            A: createMappedTask('A', 500),
-            B: createNonMappedTask('B')
-        };
-        var orc = new Orchestrator({
-            A: {
-                data: 'B'
+        async.series([
+            function (next) {
+                control.get('A', function (err, data) {
+                    assert.ok(!err);
+                    assert.ok(data.input);
+                    next();
+                });
+            },
+            function (next) {
+                control.get('B', function (err, data) {
+                    if (err) {
+                        assert.equal('test error', err.message);
+                        next();
+                    }
+                });
             }
-        }, {
-            load: function load(name) {
-                return tasks[name];
-            }
-        });
+        ], done);
 
-        var control = orc.start({
-            foo: 'bar'
-        }, function (err, result) {
-            assert.ok(!err);
-            assert.ok(result.A.err);
-            assert.equal('test error', result.A.err.message);
-            assert.ok(!result.B.err);
-            done();
-        });
-
-        orc.loadTask('B').output.done(function (err, result) {
-            control.stop(new Error('test error'));
-        });
+        control.task('B').stop(new Error('test error'));
     });
 
 });
 
 function _createTask(mapped, name, delay) {
-    function exec(input, callback) {
+    function exec(input, output) {
         input.ctx.chain = input.ctx.chain || [];
 
-        var inputData = mapped && Object.keys(input.dependencies || {}).map(function (paramName) {
-            return input.dependencies[paramName];
+        var inputData = (input.getInputNames() || []).map(function (paramName) {
+            return function (next) {
+                input.get(paramName, next);
+            };
         });
 
         async.parallel(inputData || [], function (err, results) {
             input.ctx.chain.push(name);
-            setTimeout(callback.bind(null, null, {
-                input: input,
-                results: results
-            }), delay || 0);           
+
+            setTimeout(function () {
+                output.set({
+                    input: input,
+                    results: results
+                });
+            }, delay || 0);
         });
     }
     exec.id = name;
-    return exec;    
+    return exec;
 }
 
 var createMappedTask = _createTask.bind(null, true);
