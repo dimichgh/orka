@@ -6,7 +6,7 @@ var async = require('async');
 
 var pubsub = require('../lib/pub-sub');
 
-describe.only(__filename, function () {
+describe(__filename, function () {
 
     it('should create subscribe manager', function() {
         var manager = pubsub.create('test manager');
@@ -65,6 +65,46 @@ describe.only(__filename, function () {
         });
     });
 
+    it('should correctly detect publishing loop and throw error', function (done) {
+        var manager = pubsub.create('test manager');
+        var topic = manager.topic('A');
+        manager.link('A', 'B');
+        manager.link('B', 'A');
+        topic.pub('result', function (err, data) {
+            // done(new Error('should not get here'));
+        });
+        manager.on('error', function (err) {
+            assert.ok('data has already been published: result', err.message);
+            assert.ok(err);
+            done();
+        });
+    });
+
+    it('should link two topics together and publish to source while waiting for target', function(done) {
+        var manager = pubsub.create('test manager');
+        var topic = manager.topic('Target');
+        manager.link('A', 'Target');
+
+        var count = 0;
+        topic.sub(function subA(err, data) {
+            assert.ok(!err);
+            assert.equal('result', data);
+            count++;
+        });
+        topic.sub(function subB(err, data) {
+            assert.ok(!err);
+            assert.equal('result', data);
+            count++;
+        });
+        manager.topic('A').pub('result', function () {
+            setTimeout(function () {
+                assert.equal(2, count);
+                assert.equal(1, topic.queue.length);
+                done();
+            }, 10);
+        });
+    });
+
     it('should publish to subscriber, complete and try to publish again which will be skipped', function(done) {
         var manager = pubsub.create('test manager');
         var topic = manager.topic('A');
@@ -103,6 +143,46 @@ describe.only(__filename, function () {
             assert.equal('Error: tried to publish after complete event', err.message);
             done();
         });
+    });
+
+    it('should publish to subscriber, complete and next subscriber should pick up all the events published', function(done) {
+        var manager = pubsub.create('test manager');
+        var topic = manager.topic('A');
+        var count = 0;
+        topic.sub(function subA(err, data, complete) {
+            assert.ok(!err);
+            complete ?
+                assert.equal('done', data) :
+                assert.equal('result', data);
+
+            count++;
+        });
+
+        async.series([
+            topic.pub.bind(topic, 'result'),
+            topic.pub.bind(topic, 'result'),
+            manager.complete.bind(manager, 'done'),
+            function validate(next) {
+                assert.equal(3, count);
+                assert.equal(3, topic.queue.length);
+                next();
+            },
+            function subB(next) {
+                topic.sub(function subB(err, data, complete) {
+                    assert.ok(!err);
+                    complete ?
+                        assert.equal('done', data) :
+                        assert.equal('result', data);
+
+                    count++;
+                }, next);
+            },
+            function validate(next) {
+                assert.equal(6, count);
+                assert.equal(3, topic.queue.length);
+                next();
+            }
+        ], done);
     });
 
     it('should publish to one subscriber and then process backlog for the other, single topic', function(done) {

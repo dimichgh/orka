@@ -9,8 +9,14 @@
   "keywords": [
     "async",
     "task",
-    "orchestrator"
+    "orchestrator",
+    "orchestration",
+    "task manager"
   ],
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/dimichgh/orka.git"
+  },
   "author": "Dmytro Semenov <dimichsdg@yahoo.com>",
   "license": "Apache License v2.0",
   "dependencies": {

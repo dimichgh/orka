@@ -28,6 +28,24 @@ Propeties:
     * in case 'out' is missing, it will publish under its name.
  * '@if' specifies the topics the task will wait for before starting the execution.
 
+## API
+The task is expected to have the following execution API:
+```javascript
+function taskA(input, output) {
+    // waiting for data if needed
+    input.get('input', function(err, result, complete) {
+        // handle input data
+        // publish result to output names
+        if (err)
+            output.set('error', new Error('Error'));
+        else if (result)
+            output.set('result', 'some result');
+        else
+            output.set('empty', 'default result');
+    });
+}
+```
+
 Behaviors:
  * task is started immediately unless '@if' is specified.
  * can publish multiple times to the topics.
@@ -270,19 +288,6 @@ orka.start(executionPlan, {
         console.log('TOPIC result:', result);
     });
 });
-```
-
-## Task API
-
-The task is expected to have the following execution API:
-```javascript
-function taskA(input, callback) {
-    // waiting for data
-    input.get('input', function(err, result) {
-        // handle input data
-        callback(err, result);
-    });
-}
 ```
 
 ## Examples

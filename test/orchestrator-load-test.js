@@ -2,6 +2,8 @@
 
 var assert = require('assert');
 
+var async = require('async');
+
 var Orchestrator = require('../lib/orchestrator').Orchestrator;
 
 describe(__filename, function () {
@@ -14,16 +16,15 @@ describe(__filename, function () {
 
         var task = orc.loadTask('A');
         assert.ok(task);
-        assert.ok(task.execFunc);
-        assert.ok(task.input);
-        assert.ok(task.output);
-        task.execFunc({}, function (err, result) {
+        assert.ok(typeof task === 'function');
+        orc.run(task).get('A', function (err, data) {
             assert.ok(err);
+            assert.equal('Task A cannot be found', err.message);
             done();
         });
     });
 
-    it('should load task', function (done) {
+    it('should load task with empty array props', function (done) {
         var execFunc = createTask('A');
         var orc = new Orchestrator({
             A: []
@@ -35,61 +36,74 @@ describe(__filename, function () {
 
         var task = orc.loadTask('A');
         assert.ok(task);
-        assert.ok(task.input);
-        assert.ok(task.output);
-        assert.equal(execFunc, task.execFunc);
-        assert.equal(task, orc.registry.A);
 
         // make sure it is cached
         var task2 = orc.loadTask('A');
         assert.equal(task, task2);
-        assert.ok(task2);
-        assert.ok(task2.input);
-        assert.ok(task2.output);
-        assert.equal(execFunc, task2.execFunc);
 
-        task2.execFunc('input', function (err, result) {
-            assert.equal('input', result);
+        orc.run(task).get('A', function (err, data) {
+            assert.ok(!err);
+            assert.equal('input', data);
             done();
         });
     });
 
-    it('should load single task', function () {
+    it('should load task with empty map props', function (done) {
         var execFunc = createTask('A');
         var orc = new Orchestrator({
-            A: []
+            A: {}
         }, {
             load: function load(name) {
                 return execFunc;
             }
         });
 
-        var tasks = orc.loadTasks(['A']);
+        var task = orc.loadTask('A');
+        assert.ok(task);
 
-        assert.equal(1, tasks.length);
+        // make sure it is cached
+        var task2 = orc.loadTask('A');
+        assert.equal(task, task2);
+
+        orc.run(task).get('A', function (err, data) {
+            assert.ok(!err);
+            assert.equal('input', data);
+            done();
+        });
     });
 
-    it('should load 2 nested tasks', function () {
+    it.only('should load 2 dependent tasks', function () {
         var execFuncs = {
             A: createTask('A'),
             B: createTask('B')
         };
 
-        var orc = new Orchestrator({
-            A: [
-                'B'
-            ]
+        var output = new Orchestrator({
+            A: 'B',
+            B: []
         }, {
             load: function load(name) {
                 return execFuncs[name];
             }
-        });
+        }).start();
 
-        var tasks = orc.loadTasks(['A']);
+        async.series([
+            function (next) {
+                output.get('A', function (err, data) {
+                    assert.ok(!err);
+                    assert.equal('input', data);
+                    next();
+                });
+            },
+            function (next) {
+                output.get('B', function (err, data) {
+                    assert.ok(!err);
+                    assert.equal('input', data);
+                    next();
+                });
+            }
+        ]);
 
-        assert.equal(2, tasks.length);
-        assert.equal('A', tasks[0].execFunc.id);
-        assert.equal('B', tasks[1].execFunc.id);
     });
 
     it('should load 2 tasks', function () {
@@ -193,9 +207,9 @@ describe(__filename, function () {
 });
 
 function createTask(name) {
-    function execFunc(input, callback) {
-        callback(null, input);
+    function execFunc(input, output) {
+        output.set('input');
     }
     execFunc.id = name;
-    return execFunc;    
+    return execFunc;
 }
