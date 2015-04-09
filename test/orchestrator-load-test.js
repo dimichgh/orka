@@ -21,7 +21,7 @@ describe(__filename, function () {
         var task = orc.loadTask('A');
         assert.ok(task);
         assert.ok(typeof task === 'function');
-        orc.run(task).get('A', function (err, data) {
+        orc.run('A', task).get('A', function (err, data) {
             assert.ok(err);
             assert.equal('Task A cannot be found', err.message);
             done();

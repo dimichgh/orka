@@ -37,6 +37,22 @@ describe(__filename, function () {
         }));
     });
 
+    it('should normalize simple task with @out in-line', function () {
+        assert.deepEqual([{'name':'A','out':{'t1':'topic'}}], utils.normalizePlan({
+            A: {
+                '@out:t1': 'topic'
+            }
+        }));
+    });
+
+    it('should normalize simple task with @out in-line array', function () {
+        assert.deepEqual([{'name':'A','out':{'t1':['T1','T2']}}], utils.normalizePlan({
+            A: {
+                '@out:t1': ['T1','T2']
+            }
+        }));
+    });
+
     it('should normalize simple task with @out, array of one topic', function () {
         assert.deepEqual([{'name':'A','out':{'topic':'topic'}}], utils.normalizePlan({
             A: {
@@ -74,35 +90,35 @@ describe(__filename, function () {
         }));
     });
 
-    it('should normalize simple task with @if', function () {
-        assert.deepEqual([{'name':'A','if':['T1']}], utils.normalizePlan({
+    it('should normalize simple task with @after', function () {
+        assert.deepEqual([{'name':'A','after':['T1']}], utils.normalizePlan({
             A: {
-                '@if': 'T1'
+                '@after': 'T1'
             }
         }));
     });
 
-    it('should normalize simple task with @if, multiple topics', function () {
-        assert.deepEqual([{'name':'A','if':['T1','T2']}], utils.normalizePlan({
+    it('should normalize simple task with @after, multiple topics', function () {
+        assert.deepEqual([{'name':'A','after':['T1','T2']}], utils.normalizePlan({
             A: {
-                '@if': ['T1', 'T2']
+                '@after': ['T1', 'T2']
             }
         }));
     });
 
-    it('should normalize simple task with @if and @in attributes', function () {
-        assert.deepEqual([{'name':'A','in':{'B':'B'},'if':['T1']}], utils.normalizePlan({
+    it('should normalize simple task with @after and @in attributes', function () {
+        assert.deepEqual([{'name':'A','in':{'B':'B'},'after':['T1']}], utils.normalizePlan({
             A: {
-                '@if': 'T1',
+                '@after': 'T1',
                 '@in': 'B'
             }
         }));
     });
 
     it('should normalize simple task with all attributes', function () {
-        assert.deepEqual([{'name':'A','in':{'B':'B'},'if':['T1'],'out':{'T2':'T2'}}], utils.normalizePlan({
+        assert.deepEqual([{'name':'A','in':{'B':'B'},'after':['T1'],'out':{'T2':'T2'}}], utils.normalizePlan({
             A: {
-                '@if': 'T1',
+                '@after': 'T1',
                 '@in': 'B',
                 '@out': 'T2'
             }
@@ -340,7 +356,7 @@ describe(__filename, function () {
                     "@out": "T1"
                 },
                 "B": {
-                    "@if": "T1",
+                    "@after": "T1",
                     "@out": {
                         "t2": "T2"
                     }

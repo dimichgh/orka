@@ -26,7 +26,7 @@ Propeties:
     * in case 'in' is missing, it is considered a leaf task without any dependencies on other topics.
  * '@out' specifies the topics it will publish results to.
     * in case 'out' is missing, it will publish under its name.
- * '@if' specifies the topics the task will wait for before starting the execution.
+ * '@after' specifies the topics the task will wait for before starting the execution.
 
 ## API
 The task is expected to have the following execution API:
@@ -47,7 +47,7 @@ function taskA(input, output) {
 ```
 
 Behaviors:
- * task is started immediately unless '@if' is specified.
+ * task is started immediately unless '@after' is specified.
  * can publish multiple times to the topics.
  * different tasks can publish to the same topic.
  * can receive multiple events from topics subscribed.
@@ -187,12 +187,12 @@ var plan = {
 };
 ```
 
-### Conditional execution with '@if'
-Unless explicitly specified, the task would execute immediately. To delay task execution one can use 'if' section that would listen to the specific topics to complete, before the task can be executed.
+### Conditional execution with '@after'
+Unless explicitly specified, the task would execute immediately. To delay task execution one can use 'after' section that would listen to the specific topics to complete, before the task can be executed.
 ```javascript
 var plan = {
     A: {
-        @if: ['D', 'B']
+        @after: ['D', 'B']
     }
 };
 ```
@@ -205,8 +205,8 @@ This will execute tasks sequentially.
 // A then B then C
 var plan = {
     A: {}
-    B: { @if: 'A' }
-    C: { @if: 'B' }
+    B: { @after: 'A' }
+    C: { @after: 'B' }
 }
 ```
 
@@ -238,7 +238,7 @@ var plan = {
         }
     },
     B: {
-        @if: 'CACHE_ERROR',
+        @after: 'CACHE_ERROR',
         @out: 'TOPIC'
     }
 };
@@ -258,7 +258,7 @@ C: {
     }
 },
 B: {
-    @if: 'CACHE_ERROR',
+    @after: 'CACHE_ERROR',
     @out: 'TOPIC'
 }
 ```
