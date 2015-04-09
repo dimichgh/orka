@@ -4,7 +4,7 @@ var assert = require('assert');
 
 var async = require('async');
 
-var Orchestrator = require('../lib/orchestrator').Orchestrator;
+var Orchestrator = require('../lib/orchestrator');
 var index = require('../lib');
 
 describe(__filename, function () {
@@ -28,6 +28,70 @@ describe(__filename, function () {
             assert.equal('Task A cannot be found', err.message);
             done();
         });
+    });
+
+    it('should fail to run task and notify all', function (done) {
+        var orc = new Orchestrator({
+            A: {
+                '@out': {
+                    o1: 'O1',
+                    o2: 'O2'
+                }
+            },
+            'B': 'O1',
+            'C': 'O2'
+        }, {
+            load: function load(name) {
+                if (name === 'A') {
+                    return function tsk(input, output) {
+                        output.set(new Error('Test error'));
+                    };
+                }
+                else if (name === 'B') {
+                    return function BorC(input, output) {
+                        input.get('O1', function (err) {
+                            output.set(err);
+                        });
+                    };
+                }
+                else if (name === 'C') {
+                    return function BorC(input, output) {
+                        input.get('O2', function (err) {
+                            output.set(err);
+                        });
+                    };
+                }
+            }
+        });
+
+        var output = orc.start({
+            foo: 'bar'
+        });
+
+        async.series([
+            function (next) {
+                output.get('A', function (err, data) {
+                    assert.ok(err);
+                    assert.equal('Test error', err.message);
+                    next();
+                });
+            },
+            function (next) {
+                output.get('B', function (err, data) {
+                    assert.ok(err);
+                    assert.equal('Test error', err.message);
+                    next();
+                });
+            },
+            function (next) {
+                output.get('C', function (err, data) {
+                    assert.ok(err);
+                    assert.equal('Test error', err.message);
+                    next();
+                });
+            }
+        ], done);
+
     });
 
     it('should run a single task', function (done) {
@@ -476,6 +540,116 @@ describe(__filename, function () {
         ], done);
 
         control.task('B').stop(new Error('test error'));
+    });
+
+    it('should run a single task and provide undefined inputNames and outputNames', function (done) {
+        var execFunc = createNonMappedTask('A');
+        var orc = new Orchestrator({
+            A: []
+        }, {
+            load: function load(name) {
+                return function task1(input, output) {
+                    assert.deepEqual(undefined, input.getInputNames());
+                    assert.deepEqual(undefined, output.getOutputNames());
+                    done();
+                };
+            }
+        });
+
+        orc.start();
+    });
+
+    it('should run a single task and provide inputNames and undefined outputNames', function (done) {
+        var execFunc = createNonMappedTask('A');
+        var orc = new Orchestrator({
+            A: ['B']
+        }, {
+            load: function load(name) {
+                return function task1(input, output) {
+                    assert.deepEqual(["B"], input.getInputNames());
+                    assert.deepEqual(undefined, output.getOutputNames());
+                    done();
+                };
+            }
+        });
+
+        orc.start();
+    });
+
+    it('should run a single task and provide inputNames and undefined outputNames, mapped', function (done) {
+        var execFunc = createNonMappedTask('A');
+        var orc = new Orchestrator({
+            A: {
+                '@in': 'B'
+            }
+        }, {
+            load: function load(name) {
+                return function task1(input, output) {
+                    assert.deepEqual(["B"], input.getInputNames());
+                    assert.deepEqual(undefined, output.getOutputNames());
+                    done();
+                };
+            }
+        });
+
+        orc.start();
+    });
+
+    it('should run a single task and provide multi-inputNames and outputNames', function (done) {
+        var execFunc = createNonMappedTask('A');
+        var orc = new Orchestrator({
+            A: ['B', 'C']
+        }, {
+            load: function load(name) {
+                return function task1(input, output) {
+                    assert.deepEqual(["B","C"], input.getInputNames());
+                    assert.deepEqual(undefined, output.getOutputNames());
+                    done();
+                };
+            }
+        });
+
+        orc.start();
+    });
+
+    it('should run a single task and provide inputNames and outputNames', function (done) {
+        var execFunc = createNonMappedTask('A');
+        var orc = new Orchestrator({
+            A: {
+                "@in": "B",
+                "@out": "T"
+            }
+        }, {
+            load: function load(name) {
+                return function task1(input, output) {
+                    assert.deepEqual(["B"], input.getInputNames());
+                    assert.deepEqual(["T"], output.getOutputNames());
+                    done();
+                };
+            }
+        });
+
+        orc.start();
+    });
+
+    it('should run a single task and provide multi inputNames and outputNames', function (done) {
+        var execFunc = createNonMappedTask('A');
+        var orc = new Orchestrator({
+            A: {
+                "@in": ["B", "C"],
+                "@out": ["T", "E"]
+            }
+        }, {
+            load: function load(name) {
+                return function task1(input, output) {
+                    assert.deepEqual(["B","C"], input.getInputNames());
+                    assert.deepEqual(["T","E"], output.getOutputNames());
+                    done();
+                };
+            }
+        });
+
+        orc.start();
     });
 
 });
