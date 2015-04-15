@@ -434,6 +434,18 @@ control.stop({
 });
 ```
 
+### To do:
+* if input and output are singles, allow mapping any input and output
+```javascript
+var plan = {
+    A: {
+        "@in": "T1",
+        "@out": "T2"
+    }
+}
+```
+* Validate input/output declared parameters vs what is passed to the task
+
 # Maintainers
 
 * [Dmytro Semenov](https://github.com/dimichgh)
