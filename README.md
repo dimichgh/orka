@@ -5,9 +5,6 @@ The module provides configuration based task management.
 
 The module functionality is different from other modules that provide similar API, such as async or orchestrator. The main difference is how a task is executed in relation to the tasks it depends on. For example, if task A depends on tasks C and D, it will be executed only when tasks C and D are complete while orka will let A run till it really needs results from C or D. If it happens due to logic that task A does not need data from D or C it will run without waiting for the related tasks (mapped dependency).
 
-# TODO:
-* Make task loading async
-
 # Installation
 
 ```
