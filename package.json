@@ -1,10 +1,12 @@
 {
   "name": "orka",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "description": "Configuration based task orchestrator",
   "main": "./lib/index.js",
   "scripts": {
-    "test": "make all"
+    "test": "DEBUG=orka:* ./node_modules/.bin/mocha",
+    "cover": "istanbul cover ./node_modules/.bin/mocha -- -u exports -R spec test/*.js",
+    "lint": "jshint -c .jshintrc lib/"
   },
   "keywords": [
     "async",
@@ -26,6 +28,7 @@
     "raptor-async": "~1.0.3"
   },
   "devDependencies": {
+    "istanbul": "^0.4.3",
     "jshint": "^2",
     "mocha": "^1",
     "should": "~4.6.0"
