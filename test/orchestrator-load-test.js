@@ -2,9 +2,15 @@
 
 var assert = require('assert');
 
-var Orchestrator = require('../lib/orchestrator').Orchestrator;
+var async = require('async');
+
+var Orchestrator = require('../lib/orchestrator');
 
 describe(__filename, function () {
+
+    beforeEach(function () {
+        require('../lib/orchestrator').reset();
+    });
 
     it('should fail to load task', function (done) {
         var orc = new Orchestrator(undefined, {
@@ -14,16 +20,15 @@ describe(__filename, function () {
 
         var task = orc.loadTask('A');
         assert.ok(task);
-        assert.ok(task.execFunc);
-        assert.ok(task.input);
-        assert.ok(task.output);
-        task.execFunc({}, function (err, result) {
+        assert.ok(typeof task === 'function');
+        orc.run('A', task).get('A', function (err, data) {
             assert.ok(err);
+            assert.equal('Task A cannot be found', err.message);
             done();
         });
     });
 
-    it('should load task', function (done) {
+    it('should load task with empty array props', function (done) {
         var execFunc = createTask('A');
         var orc = new Orchestrator({
             A: []
@@ -35,61 +40,74 @@ describe(__filename, function () {
 
         var task = orc.loadTask('A');
         assert.ok(task);
-        assert.ok(task.input);
-        assert.ok(task.output);
-        assert.equal(execFunc, task.execFunc);
-        assert.equal(task, orc.registry.A);
 
         // make sure it is cached
         var task2 = orc.loadTask('A');
         assert.equal(task, task2);
-        assert.ok(task2);
-        assert.ok(task2.input);
-        assert.ok(task2.output);
-        assert.equal(execFunc, task2.execFunc);
 
-        task2.execFunc('input', function (err, result) {
-            assert.equal('input', result);
+        orc.run(task).get('A', function (err, data) {
+            assert.ok(!err, err && err.stack);
+            assert.equal('input', data);
             done();
         });
     });
 
-    it('should load single task', function () {
+    it('should load task with empty map props', function (done) {
         var execFunc = createTask('A');
         var orc = new Orchestrator({
-            A: []
+            A: {}
         }, {
             load: function load(name) {
                 return execFunc;
             }
         });
 
-        var tasks = orc.loadTasks(['A']);
+        var task = orc.loadTask('A');
+        assert.ok(task);
 
-        assert.equal(1, tasks.length);
+        // make sure it is cached
+        var task2 = orc.loadTask('A');
+        assert.equal(task, task2);
+
+        orc.run(task).get('A', function (err, data) {
+            assert.ok(!err);
+            assert.equal('input', data);
+            done();
+        });
     });
 
-    it('should load 2 nested tasks', function () {
+    it('should load 2 dependent tasks', function () {
         var execFuncs = {
             A: createTask('A'),
             B: createTask('B')
         };
 
-        var orc = new Orchestrator({
-            A: [
-                'B'
-            ]
+        var output = new Orchestrator({
+            A: 'B',
+            B: []
         }, {
             load: function load(name) {
                 return execFuncs[name];
             }
-        });
+        }).start();
 
-        var tasks = orc.loadTasks(['A']);
+        async.series([
+            function (next) {
+                output.get('A', function (err, data) {
+                    assert.ok(!err);
+                    assert.equal('input', data);
+                    next();
+                });
+            },
+            function (next) {
+                output.get('B', function (err, data) {
+                    assert.ok(!err);
+                    assert.equal('input', data);
+                    next();
+                });
+            }
+        ]);
 
-        assert.equal(2, tasks.length);
-        assert.equal('A', tasks[0].execFunc.id);
-        assert.equal('B', tasks[1].execFunc.id);
     });
 
     it('should load 2 tasks', function () {
@@ -98,20 +116,31 @@ describe(__filename, function () {
             B: createTask('B')
         };
 
-        var orc = new Orchestrator({
+        var output = new Orchestrator({
             A: [],
             B: []
         }, {
             load: function load(name) {
                 return execFuncs[name];
             }
-        });
+        }).start();
 
-        var tasks = orc.loadTasks(['A', 'B']);
-
-        assert.equal(2, tasks.length);
-        assert.equal('A', tasks[0].execFunc.id);
-        assert.equal('B', tasks[1].execFunc.id);
+        async.series([
+            function (next) {
+                output.get('A', function (err, data) {
+                    assert.ok(!err);
+                    assert.equal('input', data);
+                    next();
+                });
+            },
+            function (next) {
+                output.get('B', function (err, data) {
+                    assert.ok(!err);
+                    assert.equal('input', data);
+                    next();
+                });
+            }
+        ]);
     });
 
     it('should load 2 tasks with mapped dependencies', function () {
@@ -120,20 +149,31 @@ describe(__filename, function () {
             B: createTask('B')
         };
 
-        var orc = new Orchestrator({
+        var output = new Orchestrator({
             A: {},
             B: {}
         }, {
             load: function load(name) {
                 return execFuncs[name];
             }
-        });
+        }).start();
 
-        var tasks = orc.loadTasks(['A', 'B']);
-
-        assert.equal(2, tasks.length);
-        assert.equal('A', tasks[0].execFunc.id);
-        assert.equal('B', tasks[1].execFunc.id);
+        async.series([
+            function (next) {
+                output.get('A', function (err, data) {
+                    assert.ok(!err);
+                    assert.equal('input', data);
+                    next();
+                });
+            },
+            function (next) {
+                output.get('B', function (err, data) {
+                    assert.ok(!err);
+                    assert.equal('input', data);
+                    next();
+                });
+            }
+        ]);
     });
 
     it('should load 3 tasks', function () {
@@ -143,24 +183,39 @@ describe(__filename, function () {
             C: createTask('C')
         };
 
-        var orc = new Orchestrator({
-            A: [
-                'B'
-            ],
-            B: [
-                'C'
-            ]
+        var output = new Orchestrator({
+            A: ['B'],
+            B: ['C'],
+            C: ''
         }, {
             load: function load(name) {
                 return execFuncs[name];
             }
-        });
+        }).start();
 
-        var tasks = orc.loadTasks(['A']);
-
-        assert.equal(2, tasks.length);
-        assert.equal('A', tasks[0].execFunc.id);
-        assert.equal('B', tasks[1].execFunc.id);
+        async.series([
+            function (next) {
+                output.get('A', function (err, data) {
+                    assert.ok(!err);
+                    assert.equal('input', data);
+                    next();
+                });
+            },
+            function (next) {
+                output.get('C', function (err, data) {
+                    assert.ok(!err);
+                    assert.equal('input', data);
+                    next();
+                });
+            },
+            function (next) {
+                output.get('B', function (err, data) {
+                    assert.ok(!err);
+                    assert.equal('input', data);
+                    next();
+                });
+            }
+        ]);
     });
 
     it('should load 3 tasks, mapped dependencies', function () {
@@ -170,32 +225,112 @@ describe(__filename, function () {
             C: createTask('C')
         };
 
-        var orc = new Orchestrator({
+        var output = new Orchestrator({
             A: {
-                dataFromB: 'B'
+                "@in": {
+                    "inB": "B"
+                }
             },
-            B: [
-                'C'
-            ]
+            B: ['C'],
+            C: undefined
         }, {
             load: function load(name) {
                 return execFuncs[name];
             }
+        }).start();
+
+        async.series([
+            function (next) {
+                output.get('A', function (err, data) {
+                    assert.ok(!err);
+                    assert.equal('input', data);
+                    next();
+                });
+            },
+            function (next) {
+                output.get('C', function (err, data) {
+                    assert.ok(!err);
+                    assert.equal('input', data);
+                    next();
+                });
+            },
+            function (next) {
+                output.get('B', function (err, data) {
+                    assert.ok(!err);
+                    assert.equal('input', data);
+                    next();
+                });
+            }
+        ]);
+    });
+
+    it('should use domain resolver', function (done) {
+
+        Orchestrator.registerResolver('module', function (name) {
+            if (name === 'A') {
+                return function taskA(input, output) {
+                    output.set('OK');
+                };
+            }
         });
 
-        var tasks = orc.loadTasks(['A']);
+        var orc = new Orchestrator(undefined, {
+            load: function load(name) {
+                // not loading anything else by default
+            }
+        });
 
-        assert.equal(2, tasks.length);
-        assert.equal('A', tasks[0].execFunc.id);
-        assert.equal('B', tasks[1].execFunc.id);
+        var task = orc.loadTask('module:A');
+        orc.run('A', task).get('A', function (err, data) {
+            assert.ok(!err);
+            assert.equal('OK', data);
+            done();
+        });
     });
+
+    it('should use multiple domain resolvers', function (done) {
+
+        Orchestrator.registerResolver('module', function (name) {
+            if (name === 'A') {
+                return function taskA(input, output) {
+                    output.set('OK');
+                };
+            }
+        });
+
+        Orchestrator.registerResolver('process', function (name) {
+            if (name === 'B') {
+                return function taskA(input, output) {
+                    output.set('DONE');
+                };
+            }
+        });
+
+        var orc = new Orchestrator(['module:A', 'process:B'], {
+            load: function load(name) {
+                // not loading anything else by default
+            }
+        });
+        var output = orc.start();
+
+        async.parallel({
+            A: output.get.bind(output, 'module:A'),
+            B: output.get.bind(output, 'process:B')
+        }, function (err, data) {
+            assert.ok(!err);
+            assert.equal('DONE', data.B[0]);
+            assert.equal('OK', data.A[0]);
+            done();
+        });
+    });
+
 
 });
 
 function createTask(name) {
-    function execFunc(input, callback) {
-        callback(null, input);
+    function execFunc(input, output) {
+        output.set('input');
     }
     execFunc.id = name;
-    return execFunc;    
+    return execFunc;
 }

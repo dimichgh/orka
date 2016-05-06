@@ -1,23 +1,34 @@
 {
   "name": "orka",
-  "version": "0.1.5",
+  "version": "2.0.0",
   "description": "Configuration based task orchestrator",
   "main": "./lib/index.js",
   "scripts": {
-    "test": "make all"
+    "test": "DEBUG=orka:* ./node_modules/.bin/mocha",
+    "cover": "istanbul cover ./node_modules/.bin/mocha -- -u exports -R spec test/*.js",
+    "lint": "jshint -c .jshintrc lib/"
   },
   "keywords": [
     "async",
     "task",
-    "orchestrator"
+    "orchestrator",
+    "orchestration",
+    "task manager"
   ],
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/dimichgh/orka.git"
+  },
   "author": "Dmytro Semenov <dimichsdg@yahoo.com>",
   "license": "Apache License v2.0",
   "dependencies": {
-    "raptor-async": "~1.0.3",
-    "async": "~0.9.0"
+    "async": "~0.9.0",
+    "clone": "^1.0.2",
+    "debug": "^2.1.3",
+    "raptor-async": "~1.0.3"
   },
   "devDependencies": {
+    "istanbul": "^0.4.3",
     "jshint": "^2",
     "mocha": "^1",
     "should": "~4.6.0"
