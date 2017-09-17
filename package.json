@@ -23,15 +23,15 @@
   "license": "Apache License v2.0",
   "dependencies": {
     "async": "^2.0.0-rc.4",
-    "clone": "^1.0.2",
-    "debug": "^2.2.0",
+    "clone": "^2.1.1",
+    "debug": "^3.0.1",
     "raptor-async": "^1.1.2"
   },
   "devDependencies": {
     "istanbul": "^0.4.3",
     "jshint": "^2.9.2",
-    "mocha": "^2.4.5",
-    "should": "^8.3.1"
+    "mocha": "^3.5.3",
+    "should": "^13.0.1"
   },
   "publishConfig": {
     "registry": "http://registry.npmjs.org"
