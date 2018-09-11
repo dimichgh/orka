@@ -24,7 +24,7 @@
   "dependencies": {
     "async": "^2.0.0-rc.4",
     "clone": "^2.1.1",
-    "debug": "^3.0.1",
+    "debug": "^4.0.0",
     "raptor-async": "^1.1.2"
   },
   "devDependencies": {
