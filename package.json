@@ -30,7 +30,7 @@
   "devDependencies": {
     "istanbul": "^0.4.3",
     "jshint": "^2.9.2",
-    "mocha": "^3.5.3",
+    "mocha": "^6.2.1",
     "should": "^13.0.1"
   },
   "publishConfig": {
